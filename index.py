@@ -180,7 +180,7 @@ def submitForm(signInstanceWid, longitude, latitude, position, extraFieldItemVal
     }
 
     # 默认正常的提交参数json
-    params = {"signInstanceWid":signInstanceWid,"longitude":longitude,"latitude":latitude,"isMalposition":0,"abnormalReason":"","signPhotoUrl":"","position":position,"isNeedExtra":1,"extraFieldItems":[{"extraFieldItemValue":extraFieldItemValue,"extraFieldItemWid":extraFieldItemWid}]}
+    params = {"signInstanceWid":signInstanceWid,"longitude":float(longitude),"latitude":float(latitude),"isMalposition":0,"abnormalReason":"","signPhotoUrl":"","position":position,"isNeedExtra":1,"extraFieldItems":[{"extraFieldItemValue":extraFieldItemValue,"extraFieldItemWid":extraFieldItemWid}]}
     # print(params)
     submitForm = 'https://{host}/wec-counselor-sign-apps/stu/sign/submitSign'.format(host=host)#提交表单url
     r = session.post(url=submitForm, headers=headers,
