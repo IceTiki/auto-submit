@@ -17,7 +17,7 @@ if debug:
     requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 
-a# 读取yml配置
+# 读取yml配置
 def getYmlConfig(yaml_file='config.yml'):
     file = open(yaml_file, 'r', encoding="utf-8")
     file_data = file.read()
