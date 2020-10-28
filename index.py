@@ -17,7 +17,7 @@ if debug:
     requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 
-# 读取yml配置
+a# 读取yml配置
 def getYmlConfig(yaml_file='config.yml'):
     file = open(yaml_file, 'r', encoding="utf-8")
     file_data = file.read()
@@ -122,7 +122,7 @@ def getSession(user, loginUrl):
 
 
 # 查询表单
-def queryForm(session, apis):
+def GetForm(session, apis):
     host = apis['host']
     headers = {
         'Accept': 'application/json, text/plain, */*',
@@ -132,121 +132,41 @@ def queryForm(session, apis):
         'Accept-Language': 'zh-CN,en-US;q=0.8',
         'Content-Type': 'application/json;charset=UTF-8'
     }
-    queryCollectWidUrl = 'https://{host}/wec-counselor-collector-apps/stu/collector/queryCollectorProcessingList'.format(
-        host=host)
-    params = {
-        'pageSize': 6,
-        'pageNumber': 1
-    }
-    res = session.post(queryCollectWidUrl, headers=headers,
-                       data=json.dumps(params), verify=not debug)
-    if len(res.json()['datas']['rows']) < 1:
+    SignInfosInOneDayWidUrl = 'https://{host}/wec-counselor-sign-apps/stu/sign/getStuSignInfosInOneDay'.format(host=host)#获取今日签到列表
+    params = {}
+    res = session.post(SignInfosInOneDayWidUrl, headers=headers, data=json.dumps(params), verify=not debug)#将params打包为json格式
+    if len(res.json()['datas']['unSignedTasks']) < 1:#还没有签到的项目['datas']['unSignedTasks']
         return None
-
-    collectWid = res.json()['datas']['rows'][0]['wid']
-    formWid = res.json()['datas']['rows'][0]['formWid']
-
-    detailCollector = 'https://{host}/wec-counselor-collector-apps/stu/collector/detailCollector'.format(
-        host=host)
+    signInstanceWid = res.json()['datas']['unSignedTasks'][0]['signInstanceWid']#重要数据signInstanceWid
+    signWid = res.json()['datas']['unSignedTasks'][0]['signWid']#重要数据signWid
+    detailCollector = 'https://{host}/wec-counselor-sign-apps/stu/sign/detailSignInstance'.format(host=host)#打开签到页面
     res = session.post(url=detailCollector, headers=headers,
-                       data=json.dumps({"collectorWid": collectWid}), verify=not debug)
-    schoolTaskWid = res.json()['datas']['collector']['schoolTaskWid']
-
-    getFormFields = 'https://{host}/wec-counselor-collector-apps/stu/collector/getFormFields'.format(
-        host=host)
-    res = session.post(url=getFormFields, headers=headers, data=json.dumps(
-        {"pageSize": 100, "pageNumber": 1, "formWid": formWid, "collectorWid": collectWid}), verify=not debug)
-
-    form = res.json()['datas']['rows']
-    return {'collectWid': collectWid, 'formWid': formWid, 'schoolTaskWid': schoolTaskWid, 'form': form}
-
-
-# 填写form
-def fillForm(session, form, host):
-    sort = 1
-    for formItem in form[:]:
-        # 只处理必填项
-        if formItem['isRequired'] == 1:
-            default = config['cpdaily']['defaults'][sort - 1]['default']
-            if formItem['title'] != default['title']:
-                log('第%d个默认配置不正确，请检查' % sort)
-                exit(-1)
-            # 文本直接赋值
-            if formItem['fieldType'] == 1 or formItem['fieldType'] == 5:
-                formItem['value'] = default['value']
-            # 单选框需要删掉多余的选项
-            if formItem['fieldType'] == 2:
-                # 填充默认值
-                formItem['value'] = default['value']
-                fieldItems = formItem['fieldItems']
-                for i in range(0, len(fieldItems))[::-1]:
-                    if fieldItems[i]['content'] != default['value']:
-                        del fieldItems[i]
-            # 多选需要分割默认选项值，并且删掉无用的其他选项
-            if formItem['fieldType'] == 3:
-                fieldItems = formItem['fieldItems']
-                defaultValues = default['value'].split(',')
-                for i in range(0, len(fieldItems))[::-1]:
-                    flag = True
-                    for j in range(0, len(defaultValues))[::-1]:
-                        if fieldItems[i]['content'] == defaultValues[j]:
-                            # 填充默认值
-                            formItem['value'] += defaultValues[j] + ' '
-                            flag = False
-                    if flag:
-                        del fieldItems[i]
-            # 图片需要上传到阿里云oss
-            if formItem['fieldType'] == 4:
-                fileName = uploadPicture(session, default['value'], host)
-                formItem['value'] = getPictureUrl(session, fileName, host)
-            log('必填问题%d：' % sort + formItem['title'])
-            log('答案%d：' % sort + formItem['value'])
-            sort += 1
-        else:
-            form.remove(formItem)
-    # print(form)
+                       data=json.dumps({"signInstanceWid":signInstanceWid,"signWid":signWid})#利用之前获取的signInstanceWid和signWid发包
+                       , verify=not debug)
+    longitude = res.json()['datas']['signPlaceSelected'][0]['longitude']#签到范围中心经度
+    latitude = res.json()['datas']['signPlaceSelected'][0]['latitude']#签到范围中心纬度
+    extraFieldItems = res.json()['datas']['extraField'][0]['extraFieldItems']#表单
+    form = {'signInstanceWid': signInstanceWid, 'signWid': signWid, 'longitude': longitude, 'latitude': latitude, 'extraFieldItems': extraFieldItems}
+    print(form)#看看有没有拉对表单
     return form
 
 
-# 上传图片到阿里云oss
-def uploadPicture(session, image, host):
-    url = 'https://{host}/wec-counselor-collector-apps/stu/collector/getStsAccess'.format(
-        host=host)
-    res = session.post(url=url, headers={
-                       'content-type': 'application/json'}, data=json.dumps({}), verify=not debug)
-    datas = res.json().get('datas')
-    fileName = datas.get('fileName')
-    accessKeyId = datas.get('accessKeyId')
-    accessSecret = datas.get('accessKeySecret')
-    securityToken = datas.get('securityToken')
-    endPoint = datas.get('endPoint')
-    bucket = datas.get('bucket')
-    bucket = oss2.Bucket(oss2.Auth(access_key_id=accessKeyId,
-                                   access_key_secret=accessSecret), endPoint, bucket)
-    with open(image, "rb") as f:
-        data = f.read()
-    bucket.put_object(key=fileName, headers={
-                      'x-oss-security-token': securityToken}, data=data)
-    res = bucket.sign_url('PUT', fileName, 60)
-    # log(res)
-    return fileName
-
-
-# 获取图片上传位置
-def getPictureUrl(session, fileName, host):
-    url = 'https://{host}/wec-counselor-collector-apps/stu/collector/previewAttachment'.format(
-        host=host)
-    data = {
-        'ossKey': fileName
-    }
-    res = session.post(url=url, headers={
-                       'content-type': 'application/json'}, data=json.dumps(data), verify=not debug)
-    photoUrl = res.json().get('datas')
-    return photoUrl
+# 获取默认选项和其对应的ID
+def extraFieldItem(session, form, host):
+    sort = 1
+    extraFieldItems = form['extraFieldItems']
+    for EFItems in extraFieldItems[:]:
+        answer = config['cpdaily']['answer']#注意：这是一个要在配置文件设置的项：默认选项
+        if EFItems['content'] == answer:
+            extraFieldItemValue = EFItems['content']#默认选项
+            extraFieldItemWid= EFItems['wid']#默认选项对应的ID
+            return {'extraFieldItemValue' : extraFieldItemValue, 'extraFieldItemWid' : extraFieldItemWid}
+    print('没有匹配到问题的wid')
+    exit(-1)
 
 
 # 提交表单
-def submitForm(formWid, address, collectWid, schoolTaskWid, form, session, host):
+def submitForm(signInstanceWid, longitude, latitude, position, extraFieldItemValue, extraFieldItemWid, session, host):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Linux; Android 4.4.4; OPPO R11 Plus Build/KTU84P) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/33.0.0.0 Safari/537.36 okhttp/3.12.4',
         'CpdailyStandAlone': '0',
@@ -260,13 +180,12 @@ def submitForm(formWid, address, collectWid, schoolTaskWid, form, session, host)
     }
 
     # 默认正常的提交参数json
-    params = {"formWid": formWid, "address": address, "collectWid": collectWid, "schoolTaskWid": schoolTaskWid,
-              "form": form}
+    params = {"signInstanceWid":signInstanceWid,"longitude":longitude,"latitude":latitude,"isMalposition":0,"abnormalReason":"","signPhotoUrl":"","position":position,"isNeedExtra":1,"extraFieldItems":[{"extraFieldItemValue":extraFieldItemValue,"extraFieldItemWid":extraFieldItemWid}]}
     # print(params)
-    submitForm = 'https://{host}/wec-counselor-collector-apps/stu/collector/submitForm'.format(
-        host=host)
+    submitForm = 'https://{host}/wec-counselor-sign-apps/stu/sign/submitSign'.format(host=host)#提交表单url
     r = session.post(url=submitForm, headers=headers,
                      data=json.dumps(params), verify=not debug)
+    print(params)
     msg = r.json()['message']
     return msg
 
@@ -348,18 +267,17 @@ def main_handler(event, context):
             if session != None:
                 log('模拟登陆成功。。。')
                 log('正在查询最新待填写问卷。。。')
-                params = queryForm(session, apis)
-                if str(params) == 'None':
+                getFormparams = GetForm(session, apis)
+                if str(getFormparams) == 'None':
                     log('获取最新待填写问卷失败，可能是辅导员还没有发布。。。')
                     InfoSubmit('没有新问卷')
                     exit(-1)
                 log('查询最新待填写问卷成功。。。')
                 log('正在自动填写问卷。。。')
-                form = fillForm(session, params['form'], apis['host'])
+                EFform = extraFieldItem(session, getFormparams, apis['host'])
                 log('填写问卷成功。。。')
                 log('正在自动提交。。。')
-                msg = submitForm(params['formWid'], user['user']['address'], params['collectWid'],
-                                 params['schoolTaskWid'], form, session, apis['host'])
+                msg = submitForm(getFormparams['signInstanceWid'], getFormparams['longitude'], getFormparams['latitude'], user['user']['address'], EFform['extraFieldItemValue'], EFform['extraFieldItemWid'], session, apis['host'])
                 if msg == 'SUCCESS':
                     log('自动提交成功！')
                     InfoSubmit('自动提交成功！', user['user']['email'])
