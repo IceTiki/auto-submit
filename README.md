@@ -1,6 +1,6 @@
 # 今日校园自动签到
 
-**原作者以及配置教程[ZimoLoveShuang](https://github.com/ZimoLoveShuang/auto-submit)**
+**原作者[ZimoLoveShuang](https://github.com/ZimoLoveShuang)**
 
 Zimo的自动打卡用于**信息收集**，而我们学校的打卡是以“活动”在**签到**中发布的。
 
