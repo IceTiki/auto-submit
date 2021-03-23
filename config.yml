@@ -6,6 +6,11 @@ users:
   - user:
       # 任务类型（收集：0、签到：1、查寝2）
       type: 1
+      # qmsg酱推送的key和qq
+      key: 
+      qq:
+      # 签到任务标题，填0自动选取最后一个签到任务
+      title:
       #username 学号或者工号
       username: ''
       #password 密码

@@ -1,4 +1,5 @@
 import yaml
+import requests
 from todayLoginService import TodayLoginService
 from autoSign import AutoSign
 from collection import Collection
@@ -11,11 +12,23 @@ def getYmlConfig(yaml_file='config.yml'):
     config = yaml.load(file_data, Loader=yaml.FullLoader)
     return dict(config)
 
+class Qmsg:
+    def __init__(self,config):
+        # config={'key':'*****','qq':'*****','isgroup':0}
+        self.config=config
+    def send(self,msg):
+        # msg：要发送的信息|消息推送函数
+        msg=str(msg)
+        sendtype='group/' if self.config['isgroup'] else 'send/'
+        res = requests.post(url='https://qmsg.zendee.cn/'+sendtype+self.config['key'],data={'msg': msg,'qq':self.config['qq']})
+    #    code = res.json()['code']
+    #    print(code)
 
 def main():
     config = getYmlConfig()
     for user in config['users']:
         try:
+            print('\n=========================\n'+user['user']['username']+'\n=========================\n')
             today = TodayLoginService(user['user'])
             today.login()
             # 登陆成功，通过type判断当前属于 信息收集、签到、查寝
@@ -34,7 +47,8 @@ def main():
                 sign.getDetailTask()
                 sign.fillForm()
                 msg = sign.submitForm()
-                print(msg)
+                Qmsg({'key':user['user']['key'],'qq':user['user']['qq'],'isgroup':0}).send(user['user']['username']+msg)
+                print('\n=========================\n'+msg+'\n=========================\n')
         except Exception as e:
             print(str(e))
 

@@ -20,30 +20,46 @@ class AutoSign:
         self.form = {}
         self.fileName = None
 
+    def getrighttask(self, tasks, title):
+        # tasks=res.json()['datas']['unSignedTasks']
+        if len(tasks) < 1:
+            print('当前没有未签到任务')
+            raise Exception('当前没有未签到任务')
+        if title == 0:
+            latestTask = tasks[0]
+            self.taskName=latestTask['taskName']
+            return {'signInstanceWid': latestTask['signInstanceWid'], 'signWid': latestTask['signWid']}
+        for righttask in tasks:
+            if righttask['taskName'] == title:
+                self.taskName=righttask['taskName']
+                print(righttask['taskName'])
+                return {'signInstanceWid': righttask['signInstanceWid'], 'signWid': righttask['signWid']}
+        raise Exception('没有匹配标题的任务')
+
     # 获取未签到的任务
     def getUnSignTask(self):
         headers = self.session.headers
         headers['Content-Type'] = 'application/json'
         # 第一次请求接口获取cookies（MOD_AUTH_CAS）
         url = f'{self.host}wec-counselor-sign-apps/stu/sign/getStuSignInfosInOneDay'
-        self.session.post(url, headers=headers, data=json.dumps({}), verify=False)
+        self.session.post(url, headers=headers,
+                          data=json.dumps({}), verify=False)
         # 第二次请求接口，真正的拿到具体任务
-        res = self.session.post(url, headers=headers, data=json.dumps({}), verify=False).json()
+        res = self.session.post(url, headers=headers,
+                                data=json.dumps({}), verify=False).json()
         if len(res['datas']['unSignedTasks']) < 1:
             raise Exception('当前暂时没有未签到的任务哦！')
-        # 获取最后的一个任务
-        latestTask = res['datas']['unSignedTasks'][0]
-        self.taskInfo = {
-            'signInstanceWid': latestTask['signInstanceWid'],
-            'signWid': latestTask['signWid']
-        }
+        # 获取正确的任务
+        self.taskInfo = self.getrighttask(
+            res['datas']['unSignedTasks'], self.userInfo['title'])
 
     # 获取具体的签到任务详情
     def getDetailTask(self):
         url = f'{self.host}wec-counselor-sign-apps/stu/sign/detailSignInstance'
         headers = self.session.headers
         headers['Content-Type'] = 'application/json'
-        res = self.session.post(url, headers=headers, data=json.dumps(self.taskInfo), verify=False).json()
+        res = self.session.post(url, headers=headers, data=json.dumps(
+            self.taskInfo), verify=False).json()
         self.task = res['datas']
 
     # 上传图片到阿里云oss
@@ -154,4 +170,8 @@ class AutoSign:
         # print(json.dumps(self.form))
         res = self.session.post(f'{self.host}wec-counselor-sign-apps/stu/sign/submitSign', headers=headers,
                                 data=json.dumps(self.form), verify=False).json()
+        self.msg=res['message']
         return res['message']
+
+    # def getSignInfo(self):
+    #     return {'user': self.userInfo['username'],'title':self.taskName,'msg':self.msg}
