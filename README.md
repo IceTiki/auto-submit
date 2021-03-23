@@ -4,7 +4,8 @@
 
 # 新增内容
 
-- [ ] Qmsg提醒
-- [ ] 签到Title匹配
+- [x] Qmsg简单推送
+- [ ] Qmsg详细信息推送
+- [x] 签到任务Title匹配
 - [ ] ismalposition
 - [ ] 
