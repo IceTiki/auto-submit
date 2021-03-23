@@ -8,4 +8,4 @@
 - [ ] Qmsg详细信息推送
 - [x] 签到任务Title匹配
 - [ ] ismalposition
-- [ ] 
+- [ ] 坐标抖动
