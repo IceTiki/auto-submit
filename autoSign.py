@@ -23,21 +23,23 @@ class AutoSign:
     def getrighttask(self, tasks, title):
         # tasks=res.json()['datas']['unSignedTasks']
         if len(tasks) < 1:
-            print('当前没有未签到任务')
-            raise Exception('当前没有未签到任务')
+            print('当前暂时没有未签到的任务哦！')
+            return '当前暂时没有未签到的任务哦！'
         if title == 0:
             latestTask = tasks[0]
             self.taskName=latestTask['taskName']
-            return {'signInstanceWid': latestTask['signInstanceWid'], 'signWid': latestTask['signWid']}
+            return {'signInstanceWid': latestTask['signInstanceWid'], 'signWid': latestTask['signWid'], 'taskName': latestTask['taskName']}
         for righttask in tasks:
             if righttask['taskName'] == title:
                 self.taskName=righttask['taskName']
                 print(righttask['taskName'])
-                return {'signInstanceWid': righttask['signInstanceWid'], 'signWid': righttask['signWid']}
-        raise Exception('没有匹配标题的任务')
+                return {'signInstanceWid': righttask['signInstanceWid'], 'signWid': righttask['signWid'], 'taskName': righttask['taskName']}
+        print('没有匹配标题的任务')
+        return '没有匹配标题的任务'
 
     # 获取未签到的任务
     def getUnSignTask(self):
+        # 如果匹配成功，返回一个字典
         headers = self.session.headers
         headers['Content-Type'] = 'application/json'
         # 第一次请求接口获取cookies（MOD_AUTH_CAS）
@@ -48,10 +50,12 @@ class AutoSign:
         res = self.session.post(url, headers=headers,
                                 data=json.dumps({}), verify=False).json()
         if len(res['datas']['unSignedTasks']) < 1:
-            raise Exception('当前暂时没有未签到的任务哦！')
+            print('当前暂时没有未签到的任务哦！')
+            return '当前暂时没有未签到的任务哦！'
         # 获取正确的任务
         self.taskInfo = self.getrighttask(
             res['datas']['unSignedTasks'], self.userInfo['title'])
+        return self.taskInfo
 
     # 获取具体的签到任务详情
     def getDetailTask(self):
