@@ -5,6 +5,7 @@
 # 新增内容
 
 - [x] Qmsg简单推送
+- [x] 签到失败自动重试 
 - [ ] Qmsg详细信息推送
 - [x] 签到任务Title匹配
 - [ ] ismalposition
