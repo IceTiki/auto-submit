@@ -13,6 +13,14 @@ def getYmlConfig(yaml_file='config.yml'):
     return dict(config)
 
 
+def log(*args):
+    if args:
+        string = '|||log|||'+'\n'
+        for item in args:
+            string += str(item)
+        print(string)
+
+
 class Qmsg:
     def __init__(self, config):
         # config={'key':'*****','qq':'*****','isgroup':0}
@@ -21,6 +29,10 @@ class Qmsg:
     def send(self, msg):
         # msg：要发送的信息|消息推送函数
         msg = str(msg)
+        # 简单检查配置
+        if self.config['key'] == '' or self.config['qq'] == '' or msg == '' or '*' in self.config['key'] or '*' in self.config['qq']:
+            print('Qmsg配置出错')
+            return
         sendtype = 'group/' if self.config['isgroup'] else 'send/'
         res = requests.post(url='https://qmsg.zendee.cn/'+sendtype +
                             self.config['key'], data={'msg': msg, 'qq': self.config['qq']})
@@ -28,16 +40,26 @@ class Qmsg:
     #    print(code)
 
 
+def notification(exeinfo, config):
+    yaml_Exeinfo = yaml.dump(exeinfo, allow_unicode=True)
+    log(yaml_Exeinfo)
+    for user in config['users']:
+        if 'remarksName' in user['user']:
+            if user['user']['remarksName']:
+                yaml_Exeinfo = yaml_Exeinfo.replace(
+                    user['user']['username'], user['user']['remarksName'])
+    Qmsg(config['notification']).send(yaml_Exeinfo)
+
+
 def main():
     config = getYmlConfig()
     exeinfo = {}
     exeinfo.clear
-    for i in range(7):
+    for executingTimes in range(config['maxRetryTimes']):
+        logStr_ExecutingTimes = '|第%d次尝试|' % (executingTimes+1)
         for user in config['users']:
             try:
-                print('\n=========================\n' +
-                      user['user']['username']+'\n=========================\n')
-
+                log(user['user']['username'])
                 username = user['user']['username']
                 if username in exeinfo:
                     if not exeinfo[username] == 1:
@@ -54,28 +76,28 @@ def main():
                     collection.queryForm()
                     collection.fillForm()
                     msg = collection.submitForm()
-                    print(msg)
+                    log(msg)
                 elif user['user']['type'] == 1:
                     # 以下代码是签到的代码
                     sign = AutoSign(today, user['user'])
                     unsigntaskExeInfo = sign.getUnSignTask()
                     if type(unsigntaskExeInfo) != dict:
-                        exeinfo[username] = unsigntaskExeInfo
+                        exeinfo[username] = unsigntaskExeInfo + \
+                            logStr_ExecutingTimes
                         continue
                     else:
                         unsigntaskExeInfo = unsigntaskExeInfo['taskName']
                     sign.getDetailTask()
                     sign.fillForm()
                     msg = sign.submitForm()
-                    exeinfo[username] = unsigntaskExeInfo+msg
+                    exeinfo[username] = unsigntaskExeInfo + \
+                        msg+logStr_ExecutingTimes
                     Qmsg({'key': user['user']['key'], 'qq': user['user']['qq'], 'isgroup': 0}).send(
-                        username+unsigntaskExeInfo+msg)
-                    print('\n=========================\n'+unsigntaskExeInfo +
-                          '\n=========================\n'+msg+'\n=========================\n')
+                        username+unsigntaskExeInfo+msg+logStr_ExecutingTimes)
+                    log(unsigntaskExeInfo, msg)
             except Exception as e:
                 print(str(e))
-    print('\n==\n==\n'*10)
-    print(yaml.dump(exeinfo, allow_unicode=True))
+    notification(exeinfo, config)
 
 
 # 阿里云的入口函数
