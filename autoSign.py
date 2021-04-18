@@ -22,6 +22,7 @@ class AutoSign:
 
     def getrighttask(self, tasks, title):
         # tasks=res.json()['datas']['unSignedTasks']
+        print(tasks)# 测试修改!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         if len(tasks) < 1:
             print('当前暂时没有未签到的任务哦！')
             return '当前暂时没有未签到的任务哦！'
@@ -140,6 +141,7 @@ class AutoSign:
         self.form['abnormalReason'] = self.userInfo['abnormalReason']
         self.form['position'] = self.userInfo['address']
         self.form['uaIsCpadaily'] = True
+        self.form['signVersion'] = '1.0.0'
 
     # DES加密
     def DESEncrypt(self, s, key='b3L26XNL'):
