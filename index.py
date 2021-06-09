@@ -53,7 +53,7 @@ def notification(exeinfo, config):
                 yaml_Exeinfo = yaml_Exeinfo.replace(
                     user['user']['username'], user['user']['remarksName'])
     Qmsg(config['notification']).send(
-        yaml_Exeinfo+'\n执行时间%.3fSecond' % ExecutingTime)
+        yaml_Exeinfo+'执行时间%.3fSecond' % ExecutingTime)
 
 
 def main():
