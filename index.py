@@ -3,6 +3,7 @@ import requests
 from todayLoginService import TodayLoginService
 from autoSign import AutoSign
 from collection import Collection
+import time
 
 
 def getYmlConfig(yaml_file='config.yml'):
@@ -40,18 +41,21 @@ class Qmsg:
     #    print(code)
 
 
-def notification(exeinfo, config):
+def notification(exeinfo, config, startExecutingTime):
+    ExecutingTime=startExecutingTime-time.time()
     yaml_Exeinfo = yaml.dump(exeinfo, allow_unicode=True)
     log(yaml_Exeinfo)
+    log('执行时间%.3fSecond'%ExecutingTime)
     for user in config['users']:
         if 'remarksName' in user['user']:
             if user['user']['remarksName']:
                 yaml_Exeinfo = yaml_Exeinfo.replace(
                     user['user']['username'], user['user']['remarksName'])
-    Qmsg(config['notification']).send(yaml_Exeinfo)
+    Qmsg(config['notification']).send(yaml_Exeinfo+'\n执行时间%.3fSecond'%ExecutingTime)
 
 
 def main():
+    startExecutingTime =time.time()
     config = getYmlConfig()
     exeinfo = {}
     exeinfo.clear
@@ -97,7 +101,7 @@ def main():
                     log(unsigntaskExeInfo, msg)
             except Exception as e:
                 print(str(e))
-    notification(exeinfo, config)
+    notification(exeinfo, config, startExecutingTime)
 
 
 # 阿里云的入口函数
