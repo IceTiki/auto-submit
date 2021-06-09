@@ -15,8 +15,9 @@ def getYmlConfig(yaml_file='config.yml'):
 
 
 def log(*args):
+    ExecutingTime=time.time()-startExecutingTime
     if args:
-        string = '|||log|||'+'\n'
+        string = '|||log|||%0.3fs|||\n'%ExecutingTime
         for item in args:
             string += str(item)
         print(string)
@@ -41,21 +42,23 @@ class Qmsg:
     #    print(code)
 
 
-def notification(exeinfo, config, startExecutingTime):
-    ExecutingTime=startExecutingTime-time.time()
+def notification(exeinfo, config):
+    ExecutingTime = time.time()-startExecutingTime
     yaml_Exeinfo = yaml.dump(exeinfo, allow_unicode=True)
     log(yaml_Exeinfo)
-    log('执行时间%.3fSecond'%ExecutingTime)
+    log('执行时间%.3fSecond' % ExecutingTime)
     for user in config['users']:
         if 'remarksName' in user['user']:
             if user['user']['remarksName']:
                 yaml_Exeinfo = yaml_Exeinfo.replace(
                     user['user']['username'], user['user']['remarksName'])
-    Qmsg(config['notification']).send(yaml_Exeinfo+'\n执行时间%.3fSecond'%ExecutingTime)
+    Qmsg(config['notification']).send(
+        yaml_Exeinfo+'\n执行时间%.3fSecond' % ExecutingTime)
 
 
 def main():
-    startExecutingTime =time.time()
+    global startExecutingTime
+    startExecutingTime = time.time()
     config = getYmlConfig()
     exeinfo = {}
     exeinfo.clear
@@ -101,7 +104,7 @@ def main():
                     log(unsigntaskExeInfo, msg)
             except Exception as e:
                 print(str(e))
-    notification(exeinfo, config, startExecutingTime)
+    notification(exeinfo, config)
 
 
 # 阿里云的入口函数
