@@ -8,6 +8,9 @@ from requests_toolbelt import MultipartEncoder
 
 from todayLoginService import TodayLoginService
 
+import math
+import random
+
 
 class AutoSign:
     # 初始化签到类
@@ -22,17 +25,18 @@ class AutoSign:
 
     def getrighttask(self, tasks, title):
         # tasks=res.json()['datas']['unSignedTasks']
-        print(tasks)# 测试修改!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # 测试修改!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        print(tasks)
         if len(tasks) < 1:
             print('当前暂时没有未签到的任务哦！')
             return '当前暂时没有未签到的任务哦！'
         if title == 0:
             latestTask = tasks[0]
-            self.taskName=latestTask['taskName']
+            self.taskName = latestTask['taskName']
             return {'signInstanceWid': latestTask['signInstanceWid'], 'signWid': latestTask['signWid'], 'taskName': latestTask['taskName']}
         for righttask in tasks:
             if righttask['taskName'] == title:
-                self.taskName=righttask['taskName']
+                self.taskName = righttask['taskName']
                 print(righttask['taskName'])
                 return {'signInstanceWid': righttask['signInstanceWid'], 'signWid': righttask['signWid'], 'taskName': righttask['taskName']}
         print('没有匹配标题的任务')
@@ -135,9 +139,15 @@ class AutoSign:
                         extraFieldItemValues.append(extraFieldItemValue)
             self.form['extraFieldItems'] = extraFieldItemValues
         self.form['signInstanceWid'] = self.task['signInstanceWid']
-        self.form['longitude'] = self.userInfo['lon']
-        self.form['latitude'] = self.userInfo['lat']
-        self.form['isMalposition'] = self.task['isMalposition']
+        self.form['longitude'], self.form['latitude'] = self.locationOffset(
+            self.userInfo['lon'], self.userInfo['lat'])
+        # self.form['isMalposition'] = self.task['isMalposition']
+        for place in self.task['signPlaceSelected']:
+            if self.geodistance(self.userInfo['lon'], self.userInfo['lat'], place['longitude'], place['latitude']) < place['radius']:
+                self.form['isMalposition'] = 0
+                break
+            else:
+                self.form['isMalposition'] = 1
         self.form['abnormalReason'] = self.userInfo['abnormalReason']
         self.form['position'] = self.userInfo['address']
         self.form['uaIsCpadaily'] = True
@@ -154,13 +164,13 @@ class AutoSign:
     # 提交签到信息
     def submitForm(self):
         extension = {
-            "lon": self.userInfo['lon'],
+            "lon": self.locationOffset(self.userInfo['lon'], self.userInfo['lat'])[0],
+            "lat": self.locationOffset(self.userInfo['lon'], self.userInfo['lat'])[1],
             "model": "OPPO R11 Plus",
             "appVersion": "8.1.14",
             "systemVersion": "4.4.4",
             "userId": self.userInfo['username'],
             "systemName": "android",
-            "lat": self.userInfo['lat'],
             "deviceId": str(uuid.uuid1())
         }
         headers = {
@@ -176,8 +186,42 @@ class AutoSign:
         # print(json.dumps(self.form))
         res = self.session.post(f'{self.host}wec-counselor-sign-apps/stu/sign/submitSign', headers=headers,
                                 data=json.dumps(self.form), verify=False).json()
-        self.msg=res['message']
+        self.msg = res['message']
         return res['message']
+
+    # 经纬度随机偏移
+    def locationOffset(self, lon, lat, offset=50):
+        '''
+        lon——经度
+        lat——纬度
+        offset——偏移范围(单位m)
+        '''
+        # 弧度=弧长/半径，角度=弧长*180°/π，某地经度所对应的圆半径=cos(|维度|)*地球半径
+        lonOffset = offset/(6371393*math.cos(abs(lat)))*(180/math.pi)
+        latOffset = offset/6371393*(180/math.pi)
+        # 生成随机偏移
+        randomLonOffset = random.uniform(lonOffset, -lonOffset)
+        randomLatOffset = random.uniform(latOffset, -latOffset)
+        # 将偏移应用到原有坐标上
+        # 南北极/对向子午线附近的坐标可能会超出范围(经度-180~180，维度-90~90)，对此进行了调整
+        offset_lon = ((lon+randomLonOffset)+180) % 360-180
+        offset_lat = (((lat+randomLatOffset)+90) % 180-90) * \
+            (-1)**(int(((lat+randomLatOffset)+90)/180))
+        return (offset_lon, offset_lat)
+
+    # 两经纬度算距离
+    def geodistance(self, lon1, lat1, lon2, lat2):
+        #lon1,lat1,lon2,lat2 = (120.12802999999997,30.28708,115.86572000000001,28.7427)
+        # 经纬度转换成弧度
+        lon1, lat1, lon2, at2 = map(math.radians, [float(
+            lon1), float(lat1), float(lon2), float(lat2)])
+        dlon = lon2-lon1
+        dlat = lat2-lat1
+        a = math.sin(dlat/2)**2 + math.cos(lat1) * \
+            math.cos(lat2) * math.sin(dlon/2)**2
+        distance = 2*math.asin(math.sqrt(a))*6371393  # 地球平均半径，6371393m
+        distance = round(distance/1000, 3)
+        return distance
 
     # def getSignInfo(self):
     #     return {'user': self.userInfo['username'],'title':self.taskName,'msg':self.msg}
