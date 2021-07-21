@@ -104,6 +104,8 @@ def main():
                     log(unsigntaskExeInfo, msg)
             except Exception as e:
                 print(str(e))
+                if '418' in str(e):
+                    exeinfo[username] = 418
     notification(exeinfo, config)
 
 
